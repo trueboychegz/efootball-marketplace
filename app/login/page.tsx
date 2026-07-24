@@ -4,6 +4,87 @@ import { useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 export default function LoginPage() {
+  const [username, setUsername] = useState('')
+  const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const supabase = createClientComponentClient()
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setMessage('')
+    setLoading(true)
+
+    const cleanUsername = username.trim().toLowerCase()
+
+    // 1. Look up the email linked to this username in profiles
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('username', cleanUsername)
+      .maybeSingle()
+
+    if (profileError || !profile) {
+      setMessage('Username not found. Please check your username or register first.')
+      setLoading(false)
+      return
+    }
+
+    // 2. Send Magic Link to the user's email
+    const { error: authError } = await supabase.auth.signInWithOtp({
+      email: profile.email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+
+    setLoading(false)
+
+    if (authError) {
+      setMessage(`Error: ${authError.message}`)
+    } else {
+      setMessage(`Login link sent! Check the email linked to @${cleanUsername}.`)
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-900 text-white p-4">
+      <form onSubmit={handleLogin} className="w-full max-w-md space-y-4 bg-slate-800 p-6 rounded-xl shadow-lg">
+        <h2 className="text-2xl font-bold text-center">Sign In</h2>
+        
+        <div>
+          <label className="block text-sm font-medium mb-1">Username</label>
+          <input
+            type="text"
+            placeholder="Enter your username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            className="w-full p-3 rounded bg-slate-700 border border-slate-600 focus:outline-none focus:border-green-500"
+          />
+        </div>
+
+        <button 
+          type="submit" 
+          disabled={loading}
+          className="w-full py-3 bg-green-600 hover:bg-green-700 rounded font-semibold transition disabled:opacity-50"
+        >
+          {loading ? 'Sending link...' : 'Send Login Link'}
+        </button>
+
+        {message && (
+          <p className="text-sm text-center mt-2 p-2 bg-slate-700 rounded text-slate-200">
+            {message}
+          </p>
+        )}
+      </form>
+    </div>
+ 'use client'
+
+import { useState } from 'react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+
+export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -97,4 +178,6 @@ export default function LoginPage() {
     </div>
   )
 }
+
+
 
